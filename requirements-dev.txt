@@ -1,0 +1,5 @@
+# Python 3.12 - Agent Studio app (backend/) for development, plus test tools.
+# The Langflow engine is NOT installed here: it runs as the engine container (docker-compose.yaml).
+-e ./backend
+pytest==9.0.1
+playwright==1.58.0

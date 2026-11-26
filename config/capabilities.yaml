@@ -1,0 +1,114 @@
+# Agent Studio capability registry - what the smart contract (Agent Designer) knows, in plain language.
+#
+# capabilities: things an agent can do, each backed by ONE approved tool (config/policy/catalog.yaml) and,
+#   where it reaches a system, a named entry in config/tools.yaml (the tools' allowlist). A capability whose
+#   `requires` entry is missing from tools.yaml is shown as "needs setup", never silently used.
+# apps: existing organizational applications and the intelligence they ALREADY provide, so Agent Studio recommends
+#   them instead of rebuilding them (spec 02 section 4). Same fields as the future per-app `agent_studio.yaml`
+#   contract (id, name, purpose, already_does, reusable, limits) so registered contracts can be merged in later
+#   without changing the Designer.
+
+capabilities:
+  - id: sql_health
+    label: Check SQL Server health
+    description: Read health, active alerts and findings that SQL Monitor already computed for a SQL Server instance.
+    examples: [availability group health, failed jobs, blocking, unacknowledged alerts]
+    tool: {component: "ext:studio:AppQueryComponent@official", params: {app: sqlmon}}
+    side_effect: read
+    requires: apps.sqlmon
+  - id: iis_health
+    label: Check IIS server health
+    description: Read health, slow requests, application pools and incidents from IIS Monitor for an IIS server.
+    examples: [site down, slow pages, app pool crashes, certificate expiry]
+    tool: {component: "ext:studio:AppQueryComponent@official", params: {app: iis}}
+    side_effect: read
+    requires: apps.iis
+  - id: server_action
+    label: Take an action on a server (with approval)
+    description: Run an approved remediation such as restarting a service, only after a person approves it.
+    examples: [restart IIS service, recycle app pool]
+    tool: {component: "ext:studio:AppActionComponent@official", params: {app: remediation_mock}}
+    side_effect: write
+    approval: required
+    requires: apps.remediation_mock
+  - id: data_query
+    label: Read data from a database
+    description: Run read-only queries on an approved database connection (never changes data).
+    examples: [counts, recent records, report figures]
+    tool: {component: "ext:studio:SqlReadonlyComponent@official", params: {}}
+    side_effect: read
+    requires: sql
+  - id: notify
+    label: Send a notification
+    description: Send an email or chat message to a pre-approved channel.
+    examples: [email the DBA team, post to the ops chat]
+    tool: {component: "ext:studio:NotifyComponent@official", params: {}}
+    side_effect: write
+    requires: notify
+  - id: document
+    label: Create a document
+    description: Produce a Word or Excel document from the agent's findings.
+    examples: [weekly report, incident summary]
+    tool: {component: "ext:studio:DocumentCreateComponent@official", params: {}}
+    side_effect: files
+    requires: documents
+  - id: save_data
+    label: Save data as a file
+    description: Keep collected data as a file in your files - a SQLite database, CSV, Excel or JSON.
+    examples: [build a SQLite database of the results, export to Excel, monthly data file]
+    tool: {component: "ext:studio:SaveDataComponent@official", params: {}}
+    side_effect: files
+    requires: files
+  - id: bundle_files
+    label: Bundle files into an archive
+    description: Put several of your files into one zip archive (7z where installed).
+    examples: [zip all of today's downloads, one archive of the reports]
+    tool: {component: "ext:studio:FilesBundleComponent@official", params: {}}
+    side_effect: files
+    requires: files
+  - id: web_read
+    label: Read websites and news feeds
+    description: Read public web pages, RSS/Atom feeds, sitemaps and web APIs, and keep copies. Only where this deployment has internet access.
+    examples: [daily news from many sources, download a public data set, follow a site's sitemap]
+    tool: {component: "ext:studio:WebReadComponent@official", params: {}}
+    side_effect: read
+    requires: web.enabled
+    needs_setup_text: This Agent Studio has no internet access (air-gapped or switched off), so agents cannot read websites. Where the network allows it, an administrator can switch it on (tools.yaml web.enabled).
+  - id: record
+    label: Record a note or ticket (with approval)
+    description: Write a note or ticket entry to an approved table or system, only after approval.
+    examples: [incident note, change record]
+    tool: {component: "ext:studio:RecordWriteComponent@official", params: {}}
+    side_effect: write
+    approval: required
+    requires: sql
+  - id: knowledge
+    label: Search organizational knowledge
+    description: Search Knowledge Platform documents as the requesting person.
+    tool: {component: "ext:studio:KnowledgeSearchComponent@official", params: {}}
+    side_effect: read
+    requires: knowledge.enabled
+  - id: date
+    label: Know today's date and time
+    description: Current date and time, for schedules and reports.
+    tool: {component: "CurrentDate", params: {}}
+    side_effect: none
+  - id: calculate
+    label: Do calculations
+    description: Exact arithmetic for figures in answers and reports.
+    tool: {component: "CalculatorComponent", params: {}}
+    side_effect: none
+
+apps:   # EXAMPLES. An organisation lists its own applications in config/local/apps.yaml (never committed).
+  - id: sql-monitor
+    name: SQL Monitor
+    purpose: Monitors SQL Server instances.
+    already_does: [health findings, blocking, failed jobs, backups, query analysis]
+    reusable: [findings, health summary (API)]
+    limits: [one deployment per SQL Server instance, does not execute fixes]
+  - id: iis-monitor
+    name: IIS Monitor
+    purpose: Monitors IIS web servers.
+    already_does: [node and site health, slow requests, app pool status, incident detection and timelines, certificate expiry]
+    reusable: [overview, nodes, incidents (API, directory sign-in)]
+    limits: [cannot recycle app pools or restart services]

@@ -1,0 +1,27 @@
+# Agent Studio - LOCAL DEPLOY values (dev.ps1 deploy only; mounted in place of config.prod.yaml by
+# docker-compose.local-deploy.yaml). Merged over config.yaml like config.prod.yaml; only keys that differ
+# on this PC. Never part of a bundle. No secrets (they come from .env.local-deploy).
+
+app:
+  public_url: http://127.0.0.1:18095
+  frontend_dir: /app/web
+  files_dir: /data/files
+  contracts_dir: /data/contracts
+  discover: []   # Discover: known systems Agent Studio checks for a published contract (no network scanning)
+  failure_check_minutes: 5          # live agents' failed runs -> one alert per agent per day to the pre-approved channel; 0 = off
+  embed_origins: []   # chat apps allowed to show this app inside their window (the chat app); [] = none
+  database:
+    host: host.docker.internal          # the existing PostgreSQL on this PC
+    name: studio_localdeploy           # own database, separate from development (create it once, see README)
+
+engine:
+  url: http://engine:7860
+  public_url: http://127.0.0.1:17860
+  app_url: http://127.0.0.1:18095
+
+database:
+  host: host.docker.internal
+  name: studio_localdeploy
+
+langflow:
+  cors_origins: [http://127.0.0.1:18095]

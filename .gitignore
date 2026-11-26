@@ -1,0 +1,37 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+node_modules/
+dist/
+.build/
+.dev-pids
+build/
+logs/
+*.log
+.idea/
+.vscode/
+.DS_Store
+*.tar
+.env
+.env.*
+*.env
+!*.example
+*.pem
+*.key
+*.pfx
+
+# project
+# This organisation's own settings, brand and documents: never committed (public repo = neutral examples only)
+config/local/
+branding/brand.local/
+docs/local/
+CLAUDE.md
+
+# runtime data (people's files, engine data)
+data/
+
+# Python build output
+*.egg-info/

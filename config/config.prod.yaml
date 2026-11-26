@@ -1,0 +1,104 @@
+# Agent Studio (agent-studio) - production values. Same keys as config.yaml, merged over it when APP_ENV=prod.
+
+app:
+  public_url: https://__SET_ME__
+  port: 8095
+  frontend_dir: /app/web
+  files_dir: /data/files                 # people's files (agent outputs), shared with the engine (tools.yaml files.root)
+  contracts_dir: /data/contracts         # learned system contracts approved in Agent Studio (shared with the engine: tools.yaml contracts_dir)
+  discover: []   # Discover: known systems Agent Studio checks for a published contract (no network scanning)
+  failure_check_minutes: 5          # live agents' failed runs -> one alert per agent per day to the pre-approved channel; 0 = off
+  embed_origins: []   # chat apps allowed to show this app inside their window (the chat app); [] = none
+  database:                           # the app's own tables (designs/drafts), schema agent_studio in the same DB
+    host: __SET_ME__
+    port: 5432
+    name: agent_studio
+    user: agent_studio
+    schema: agent_studio
+    password_env: STUDIO_DB_PASSWORD
+  designer_profile: default           # ai: profile the smart contract reasons with
+
+engine:
+  url: http://engine:7860
+  public_url: https://__SET_ME__:7860
+  app_url: https://__SET_ME__
+  secret_env: STUDIO_ENGINE_SECRET
+  console_admins: []                # AD usernames allowed to open the raw engine console (deep fixes only); everyone else uses Agent Studio
+
+
+# AI profiles (Project Standard: ai_providers.py; code asks for a task name, never a model).
+# The engine's model components use the same endpoints: studio_engine.entrypoint exports OLLAMA_BASE_URL and
+# VLLM_API_BASE from the profiles below (one endpoint per provider); builders pick the model per agent.
+ai:
+  default:   {provider: ollama, base_url: "http://__SET_ME__:11434", model: "qwen3:30b-a3b-instruct-2507-q8_0", suppress_thinking: true, fallback: reasoning}
+  reasoning: {provider: openai, base_url: "http://__SET_ME__:8000/v1", model: "your-model-name", suppress_thinking: true, fallback: default}
+  # fallback: the profile used while this one's server cannot be reached (Agent Studio's own calls and live agents)
+  media:     {provider: comfyui, enabled: false, base_url: "http://__SET_ME__:8188"}
+database:
+  host: __SET_ME__
+  port: 5432
+  name: agent_studio
+  user: agent_studio
+  password_env: STUDIO_DB_PASSWORD
+
+langflow:
+  deployment_profile: dev                    # "prod" preflight demands S3 + vector store (multi-replica cloud); not our shape
+  host: 0.0.0.0
+  port: 7860
+  workers: 1
+  log_level: info
+  log_file: ""
+  frontend_path: /app/frontend
+  do_not_track: true
+  models_dev_refresh: false   # air-gap: no live models.dev catalog fetch
+  store: false
+  store_url: ""
+  download_webhook_url: ""
+  like_webhook_url: ""
+  # Model endpoints become per-user global variables at session start (rule 8; background runs don't read the
+  # process environment). Replaces the engine's default list of cloud API keys.
+  variables_to_get_from_environment: [OLLAMA_BASE_URL, VLLM_API_BASE, VLLM_API_KEY]
+  agentic_experience: true                   # engine assistant + session-run API (endpoints.py:1322); reused by the Agent Designer
+  create_starter_projects: false
+  update_starter_projects: false
+  hide_starter_projects: true
+  # --- authentication: people sign in to the Agent Studio app (AD); it asks the engine to open their session
+  auto_login: false
+  enable_signup: false
+  new_user_is_active: false
+  external_auth_provider: agent-studio-ad          # provider key on JIT users' SSO profile (external auth itself stays off)
+  refresh_token_expire_seconds: 28800        # an AD-disabled user loses access within 8 h at most
+  allow_custom_components: false
+  allow_components_paths_override: false
+  custom_component_admin_only: true
+  block_code_interpreter_components: true
+  restrict_local_file_access: true
+  tweaks_policy: declared
+  mcp_servers_locked: true
+  mcp_server_docker_hardening: true
+  mcp_server_interpreter_hardening: true
+  mcp_server_allowed_packages: ""
+  mcp_server_env_allowlist: ""
+  # multi-tenant-safe MCP posture (langflow/cli/preflight.py:548-558)
+  skip_mcp_auto_init: true
+  add_projects_to_mcp_servers: false
+  mcp_composer_enabled: false
+  mcp_sse_enabled: false
+  connector_ssrf_allow_loopback: false
+  disable_track_apikey_usage: true
+  cors_origins: [https://__SET_ME__]
+
+
+# Sign-in. Directory mode: each person binds with their own account (no service account);
+# group_map per role: '' = nobody, everybody = any directory account, else a directory group.
+ldap:
+  enabled: false                # false: local accounts (the first visit creates the administrator, who adds people on
+                                # Settings). true: people sign in with their directory account (Active Directory / LDAP).
+  server_uri: ""                # e.g. ldaps://dc.example.org:636 (needed when enabled)
+  use_tls: true
+  user_search_base: ""          # e.g. DC=example,DC=org
+  group_map:                    # directory mode only; local accounts get their role on Settings
+    # Each role: '' (nobody), everybody (any AD account), or a list of AD group names (CN) or full DNs.
+    admin: [Agent_Studio_Admins]   # directory groups (or "user:<account>" for one named person) who approve systems and know-how
+    builder: [Agent_Studio_Builders]   # directory groups who create and publish agents
+    user: everybody                   # use published agents

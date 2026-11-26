@@ -1,0 +1,35 @@
+# agent-studio - LOCAL DEPLOY override (development PC only; never copied to a target).
+#
+# Used by `.\scripts\dev.ps1 deploy` on top of a bundle's docker-compose.prod.yaml, as Compose project
+# agent-studio-localdeploy. It changes only what differs on this PC:
+#   - own host ports (18095 app, 17860 engine), so the dev stack (8095 / 7860) keeps running
+#   - secrets from the repo's .env.local-deploy (local test values, never real production secrets)
+#   - settings: the repo's config/ with config/config.local-deploy.yaml in place of config.prod.yaml
+#     (local endpoints, own database studio_localdeploy); the production config is not touched
+#   - data in data\localdeploy\ (kept across bundles), separate from development's data\files
+# STUDIO_REPO is set by dev.ps1 deploy (the repository root).
+
+services:
+  agent-studio:
+    ports: !override ["127.0.0.1:18095:8095"]
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    env_file: !override [{path: "${STUDIO_REPO:?run through dev.ps1 deploy}/.env.local-deploy"}]
+    volumes: !override
+      - ${STUDIO_REPO}/config:/app/config:ro
+      - ${STUDIO_REPO}/branding:/app/branding:ro        # brand.json (brand.local wins over brand.example)
+      - ${STUDIO_REPO}/config/config.local-deploy.yaml:/app/config/config.prod.yaml:ro
+      - ${STUDIO_REPO}/data/localdeploy/files:/data/files
+      - ${STUDIO_REPO}/data/localdeploy/contracts:/data/contracts
+
+  engine:
+    ports: !override ["127.0.0.1:17860:7860"]
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    env_file: !override [{path: "${STUDIO_REPO}/.env.local-deploy"}]
+    volumes: !override
+      - ${STUDIO_REPO}/config:/app/config:ro
+      - ${STUDIO_REPO}/branding:/app/branding:ro        # brand.json (brand.local wins over brand.example)
+      - ${STUDIO_REPO}/config/config.local-deploy.yaml:/app/config/config.prod.yaml:ro
+      - ${STUDIO_REPO}/data/localdeploy/engine:/home/langflow/.cache/langflow
+      - ${STUDIO_REPO}/data/localdeploy/files:/data/files
+      - ${STUDIO_REPO}/data/localdeploy/contracts:/data/contracts
+      - ${STUDIO_REPO}/data/localdeploy/toolkit:/data/toolkit

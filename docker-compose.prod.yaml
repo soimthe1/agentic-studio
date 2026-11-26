@@ -1,0 +1,60 @@
+# agent-studio (Agent Studio) - production deployment
+#
+# Deployment folder:
+#   agent-studio/
+#     docker-compose.prod.yaml
+#     FIRST_DEPLOYMENT.md              one-time setup on a new target
+#     README.md                        verified project overview
+#     deployment-manifest.json         bundled image tags, checksums
+#     agent-studio-<timestamp>.tar        images
+#     agent-studio-<timestamp>.sha256     checksum of the tar
+#     .env.prod                        from .env.prod.example (secrets)
+#     config/config.yaml, config.prod.yaml
+#     data/files, data/contracts, data/engine   created on first start (writable by uid 1000; back up)
+#
+# Build host:   .\scripts\dev.ps1 build          -> dist\agent-studio-<timestamp>\
+#               copy that whole folder (it holds no real secrets)
+# New target:   follow FIRST_DEPLOYMENT.md once
+# Verify:       (Get-FileHash agent-studio-<timestamp>.tar -Algorithm SHA256).Hash   or   sha256sum -c agent-studio-<timestamp>.sha256
+# Install:      docker load -i agent-studio-<timestamp>.tar
+# Start:        docker compose -f docker-compose.prod.yaml --env-file .env.prod up -d
+# Check:        docker compose -f docker-compose.prod.yaml ps   (UI: http://<host>:8095, engine health http://<host>:7860/health)
+# Logs:         docker compose -f docker-compose.prod.yaml logs -f
+# Upgrade:      copy the new bundle's tar and docker-compose.prod.yaml (new tags), docker load, then Start again
+# Stop:         docker compose -f docker-compose.prod.yaml down
+
+name: agent-studio
+
+services:
+  # Agent Studio app: sign-in (AD), Agent Studio API, web app.
+  agent-studio:
+    image: agent-studio-app:${STUDIO_TAG:-__TAG__}
+    restart: unless-stopped
+    environment:
+      APP_ENV: prod
+      CONFIG_DIR: /app/config
+    env_file: [{path: .env.prod, required: false}]   # required on a target; optional only so `config` validates without it
+    volumes:
+      - ./config:/app/config:ro
+      - ./branding:/app/branding:ro        # brand.json (brand.local wins over brand.example)
+      - ./data/files:/data/files
+      - ./data/contracts:/data/contracts   # approved system contracts (Tools page) -> engine tools
+    ports: ["8095:8095"]
+    depends_on:
+      engine: {condition: service_healthy}
+
+  # Agent engine (Langflow runtime + builder canvas). Database: the existing PostgreSQL (config.prod.yaml database:).
+  engine:
+    image: agent-studio-engine:${STUDIO_TAG:-__TAG__}
+    restart: unless-stopped
+    environment:
+      APP_ENV: prod
+    env_file: [{path: .env.prod, required: false}]   # required on a target; optional only so `config` validates without it
+    volumes:
+      - ./config:/app/config:ro
+      - ./branding:/app/branding:ro        # brand.json (brand.local wins over brand.example)
+      - ./data/engine:/home/langflow/.cache/langflow
+      - ./data/files:/data/files
+      - ./data/contracts:/data/contracts   # approved system contracts (Tools page) -> engine tools
+      - ./data/toolkit:/data/toolkit       # libraries people brought (air-gapped): wheels/ in, site/ installed
+    ports: ["7860:7860"]

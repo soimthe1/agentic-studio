@@ -1,0 +1,17 @@
+**
+!docker/langflow/requirements.lock
+!branding/brand.example/**
+!branding/brand.local/**
+branding/brand.local/kit
+branding/brand.local/*.zip
+!branding/locale-overrides.en.json
+!branding/apply-branding.mjs
+!branding/seams/**
+!engine/**
+!tools/**
+!backend/**
+!frontend/**
+frontend/node_modules
+frontend/dist
+**/__pycache__
+**/*.egg-info

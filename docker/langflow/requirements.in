@@ -1,0 +1,47 @@
+# Langflow engine, pinned (rule: langflow-base + three provider bundles only).
+# Regenerate requirements.lock with: .\scripts\dev.ps1 lock
+langflow-base[postgresql]==1.13.2
+psycopg[binary]                 # langflow-base[postgresql] ships psycopg 3 without its libpq binary
+lfx==1.13.2
+lfx-ollama==0.2.0
+lfx-vllm==0.2.0
+lfx-openai-compatible==0.2.0
+ldap3==2.9.1                    # Agent Studio sign-in (directory sign-in): AD bind over STARTTLS/LDAPS
+pymssql==2.4.6                  # studio-tools sql_readonly: SQL Server connections
+
+# ---- Tool kit: libraries tools written by AI can use on an air-gapped server (nothing can be downloaded there).
+# Chosen for the common jobs; anything else can be brought as .whl files into data/toolkit/wheels (Systems page).
+# Documents
+pypdf                           # read PDF text/pages
+pdfplumber                      # PDF tables and layout
+reportlab                       # create PDF
+python-docx                     # Word
+python-pptx                     # PowerPoint
+openpyxl                        # Excel .xlsx
+xlrd                            # old Excel .xls
+extract-msg                     # Outlook .msg files
+markdown                        # Markdown -> HTML
+beautifulsoup4                  # HTML parsing
+lxml                            # XML/HTML
+xmltodict                       # XML -> dict
+chardet                         # guess text encodings
+Pillow                          # images
+matplotlib                      # charts as images
+tabulate                        # text tables
+# Mail, calendar, directory, Windows and Linux servers, file shares
+exchangelib                     # Microsoft Exchange (EWS): mail, calendar, contacts
+imapclient                      # IMAP mail
+icalendar                       # calendar files
+pypsrp                          # PowerShell on Windows servers (WinRM / PSRP)
+pywinrm                         # Windows remote commands (WinRM)
+paramiko                        # SSH to Linux/network devices
+smbprotocol                     # Windows file shares (SMB)
+requests-ntlm                   # Windows-authenticated web APIs
+dnspython                       # DNS lookups
+pysnmp                          # SNMP (network devices, printers, UPS)
+# Databases (SQL Server: pymssql above; PostgreSQL: psycopg above)
+oracledb                        # Oracle (thin mode, no client install)
+pymysql                         # MySQL / MariaDB
+# Data and dates
+pandas                          # tables and analysis
+python-dateutil                 # date parsing

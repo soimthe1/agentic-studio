@@ -1,0 +1,29 @@
+# Quick start (docker-compose.quickstart.yaml): merged over config.yaml. Only what differs on a single computer.
+# No secrets here (they are generated into the "secrets" volume).
+
+app:
+  public_url: http://localhost:8095
+  frontend_dir: /app/web
+  files_dir: /data/files
+  contracts_dir: /data/contracts
+  discover: []
+  database: {host: postgres}
+
+engine:
+  url: http://engine:7860
+  public_url: http://localhost:7860
+  app_url: http://localhost:8095
+
+database: {host: postgres}
+
+langflow:
+  cors_origins: [http://localhost:8095]
+
+ldap: {enabled: false}   # local accounts: the first visit creates the administrator
+
+# Starting point: Ollama on this computer. Choose the real server and model on Settings -> AI models.
+# No backup model by default (fallback ""); add one later in config if you have a second server.
+ai:
+  default:   {provider: ollama, base_url: "http://host.docker.internal:11434", model: "your-model-name", fallback: ""}
+  reasoning: {provider: ollama, base_url: "http://host.docker.internal:11434", model: "your-model-name", fallback: ""}
+  ollama:    {provider: ollama, base_url: "http://host.docker.internal:11434", enabled: false}

@@ -1,0 +1,12 @@
+{
+  "auth.loginTitle": "Sign in to {{BRAND}}",
+  "page.welcomeTitle": "Welcome to {{BRAND}}",
+  "misc.chatTitle": "{{BRAND}} Chat",
+  "modal.io.builtWithLangflow": "{{BRAND}} AI Agent Studio",
+  "modal.io.builtWithLangflowTooltip": "{{BRAND}} AI Agent Studio",
+  "crash.restartButton": "Restart {{BRAND}}",
+  "settings.apiKeysTitle": "API Keys",
+  "settings.nav.apiKeys": "API Keys",
+  "settings.nav.mcpClient": "MCP Client",
+  "settings.generalDescription": "Manage settings related to {{BRAND}} and your account."
+}

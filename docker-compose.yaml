@@ -1,0 +1,31 @@
+name: agent-studio
+
+# Development: the Langflow ENGINE only. The Agent Studio app itself runs natively:
+#   .\scripts\dev.ps1 start      (starts this engine, then the backend and the web app)
+#   docker compose up -d --build (engine alone)
+# PostgreSQL and Active Directory are existing services, addressed through config/config.yaml.
+
+services:
+  engine:
+    build: {context: ., dockerfile: docker/langflow/Dockerfile}
+    image: agent-studio-engine:dev
+    restart: unless-stopped
+    extra_hosts: ["host.docker.internal:host-gateway"]   # reach the existing PostgreSQL on the host
+    environment:
+      # Secrets only; every other setting comes from config/config.yaml via studio_engine.entrypoint.
+      STUDIO_DB_PASSWORD: ${STUDIO_DB_PASSWORD}
+      STUDIO_ENGINE_SECRET: ${STUDIO_ENGINE_SECRET}
+      LANGFLOW_SUPERUSER: ${LANGFLOW_SUPERUSER}
+      LANGFLOW_SUPERUSER_PASSWORD: ${LANGFLOW_SUPERUSER_PASSWORD}
+      LANGFLOW_SECRET_KEY: ${LANGFLOW_SECRET_KEY}
+      STUDIO_TOOL_IIS_PASSWORD: ${STUDIO_TOOL_IIS_PASSWORD}         # tools.yaml iis login (dev: test double)
+    volumes:
+      - ./config:/app/config:ro
+      - engine-data:/home/langflow/.cache/langflow
+      - ./data/files:/data/files        # people's files (agent outputs); the app reads the same folder
+      - ./data/contracts:/data/contracts  # systems learned + approved in Agent Studio (the app writes, tools read)
+      - ./data/toolkit:/data/toolkit      # libraries people brought (air-gapped): wheels/ in, site/ installed
+    ports: ["127.0.0.1:7860:7860"]
+
+volumes:
+  engine-data:

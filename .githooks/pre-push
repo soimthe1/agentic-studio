@@ -1,0 +1,21 @@
+#!/bin/sh
+# Refuses a push that would publish organisation details. Enabled by `dev.ps1 setup` (git config core.hooksPath .githooks).
+#   1. No private file may be in the pushed commits (brand.local, config/local, docs/local, .env, data).
+#   2. scripts/release_check.py must say Ready (generic patterns + your own words in config/local/release-words.txt).
+root=$(git rev-parse --show-toplevel)
+py="$root/.venv/Scripts/python.exe"; [ -x "$py" ] || py="$root/.venv/bin/python"; [ -x "$py" ] || py=python3
+private='^(branding/brand\.local/|config/local/|docs/local/|data/|\.env($|\.)|CLAUDE\.md$)'
+zero=0000000000000000000000000000000000000000
+
+while read -r _ local_sha _ remote_sha; do
+    [ "$local_sha" = "$zero" ] && continue                       # deleting a branch
+    if [ "$remote_sha" = "$zero" ]; then range="$local_sha"; else range="$remote_sha..$local_sha"; fi
+    bad=$(git log --name-only --format= $range | grep -E "$private" | grep -v '\.example$' | sort -u)
+    if [ -n "$bad" ]; then
+        echo "push refused: private files in the commits being pushed:" >&2
+        echo "$bad" | sed 's/^/  /' >&2
+        exit 1
+    fi
+done
+
+"$py" "$root/scripts/release_check.py" || { echo "push refused: fix the findings above (scripts/release_check.py)" >&2; exit 1; }

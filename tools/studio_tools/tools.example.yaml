@@ -1,0 +1,174 @@
+# studio-tools v1 configuration — copy to $CONFIG_DIR/tools.yaml (CONFIG_DIR defaults to /app/config).
+# STUDIO_TOOLS_CONFIG may point at another file. Re-read automatically when the file changes.
+#
+# RULES
+# - This file IS the allowlist. A tool can only reach a connection, app, operation, action, table, channel or
+#   template written here. The LLM picks names; it never supplies a URL, host, address or connection string.
+# - No secrets here. Each credential is named by an environment variable (password_env / token_env /
+#   agent_tools_key_env). A key literally called password / token / secret / api_key / key is rejected at load.
+# - Per agent, a flow can narrow this further (the "Enabled for this agent" input on each tool).
+# - Writes (app_action, record_write, notify) need allow_write / requires_approval policy here AND
+#   approved=true from the flow's human-approval step AND dry_run=false. approved/dry_run are not visible to
+#   the LLM. Nothing that writes is ever retried.
+version: 1
+
+# ---------------------------------------------------------------------------------------------- sql_readonly
+sql:
+  dwh_postgres:
+    dialect: postgres            # postgres | mssql | clickhouse | sqlite (sqlite = dev/tests only)
+    host: postgres-dwh.example.org
+    port: 5432
+    database: dwh
+    username: studio_ro         # a login with read grants only (the real read-only boundary)
+    password_env: STUDIO_TOOL_DWH_PASSWORD
+    max_rows: 1000               # hard cap per query (tool hard limit 10000)
+    timeout_s: 30                # statement_timeout + wall clock
+    # sslmode: require
+  sql_ag_reporting:
+    dialect: mssql               # pymssql driver (must be installed in the engine image)
+    host: sqlag-listener.example.org   # point at a readable secondary if possible (pymssql cannot send ApplicationIntent)
+    port: 1433
+    database: Reporting
+    username: studio_ro         # db_datareader only
+    password_env: STUDIO_TOOL_SQLAG_PASSWORD
+    max_rows: 500
+    timeout_s: 30
+  events_ch:
+    dialect: clickhouse
+    host: clickhouse.example.org
+    port: 8123
+    secure: false
+    database: events
+    username: studio_ro         # profile readonly=2 (readonly=1 would reject the per-query settings below)
+    password_env: STUDIO_TOOL_CH_PASSWORD
+    max_rows: 1000
+    timeout_s: 30
+    # clickhouse_settings: {readonly: 2}     # merged into every query's settings
+  ops_notes:                     # used by record_write (INSERT) only
+    dialect: postgres
+    host: postgres-ops.example.org
+    port: 5432
+    database: studio_ops
+    username: studio_writer
+    password_env: STUDIO_TOOL_OPS_PASSWORD
+    allow_write: true            # without this record_write refuses
+    writable_tables:             # exact table names; optional column allowlist
+      ops.incident_notes:
+        columns: [server, incident_ref, note, created_by]
+
+# ---------------------------------------------------------------------------------- app_query / app_action
+apps:
+  sqlmon:                        # SQL Monitor: ONE deployment per SQL Server -> target = instance name
+    type: sql_monitor
+    instances:
+      SQLPROD01:
+        base_url: http://sqlmon-prod01.example.org:8000
+        agent_tools_key_env: STUDIO_TOOL_SQLMON_PROD01_AGENT_KEY   # only for /api/agent-tools/* (off by default there)
+      SQLPROD02:
+        base_url: http://sqlmon-prod02.example.org:8000
+    timeout_s: 20
+    retries: 1                   # GET only
+    # operations: [health_summary, findings, ...]   # optional narrowing of the built-in list
+    allow_write: false
+    actions: []                  # built-in: acknowledge_finding, resolve_finding (list here to enable)
+  iis:                           # IIS Monitor: one deployment for the fleet -> target = IIS node hostname
+    type: iis_monitor
+    base_url: http://iis-monitor.example.org:8000
+    auth:
+      type: ad_login             # POST /api/v1/auth/login -> access_token (JWT, Bearer)
+      login_path: /api/v1/auth/login
+      username: svc_studio_ro   # read-only AD account
+      password_env: STUDIO_TOOL_IIS_PASSWORD
+    allowed_targets: []          # optional node allowlist; empty = any node the monitor knows
+    allow_write: false
+    actions: []                  # built-in: acknowledge_incident (admin-only in the IIS Monitor)
+  sqlcatalog:                    # generic app: operations declared here
+    type: generic
+    base_url: http://sql-catalog.example.org:8200
+    auth:
+      type: service_key          # X-Service-Key + X-On-Behalf-Of (true on-behalf-of)
+      header: X-Service-Key
+      token_env: STUDIO_TOOL_SQLCATALOG_SERVICE_KEY
+      on_behalf_of_header: X-On-Behalf-Of
+    operations:
+      ask:
+        method: POST
+        read: true               # a POST that only reads; never retried
+        path: /v1/ask
+        body: [question, database]
+  remediation_mock:                   # DECLARED MOCK for the IIS Incident pilot (no real remediation API exists)
+    type: generic
+    mock: true                   # echoed as source.mock=true in every result
+    base_url: http://mock-remediation.example.org:9000
+    auth: {type: none}
+    allow_write: true
+    allowed_targets: [WEB01, WEB02]
+    operations:
+      host_status: {path: "/api/v1/fleet/{target}"}
+    actions:
+      restart_service:
+        method: POST
+        path: /api/v1/actions
+        target_field: host       # target goes into the body as "host"
+        fixed: {action: restart}
+        body: [service]
+    records:                     # record_write targets on an app (REST POST)
+      incident_note:
+        method: POST
+        path: /api/v1/notes
+        body: [host, note]
+# Other auth types: {type: none} | {type: bearer, token_env: X} | {type: header, header: X-Api-Key, token_env: X}
+#                   | {type: basic, username: u, password_env: X}
+# Other per-app keys: allowed_hosts (extra hosts besides base_url's), verify_tls (default true), ca_bundle.
+
+# ------------------------------------------------------------------------------------------ knowledge_search
+knowledge:
+  enabled: false                 # the knowledge platform has no delegated machine route yet -> tool answers
+                                 # "unavailable". Do NOT work around this with a shared account.
+  base_url: http://knowledge-api.example.org:8082
+  auth:
+    type: delegated              # the only accepted type
+    token_env: STUDIO_TOOL_KNOWLEDGE_SERVICE_TOKEN
+    on_behalf_of_header: X-On-Behalf-Of
+  timeout_s: 60
+
+# ----------------------------------------------------------------------------------------------------- notify
+notify:
+  dba_email:
+    type: smtp
+    host: smtp-relay.example.org
+    port: 25
+    starttls: true
+    # ssl: true                  # implicit TLS (port 465) instead of STARTTLS
+    # username: svc_studio_mail
+    # password_env: STUDIO_TOOL_SMTP_PASSWORD
+    from_addr: agent-studio@example.org
+    to: [dba-team@example.org]      # fixed recipients; the LLM cannot add any
+    requires_approval: true      # default true
+    timeout_s: 15
+  ops_alerts_chat:
+    type: webhook
+    url: https://chat.example.org/hooks/abc   # fixed URL
+    token_env: STUDIO_TOOL_CHAT_WEBHOOK_TOKEN       # optional bearer
+    format: text                 # text = {"text": ...} (Mattermost / Rocket.Chat / Teams compatible) | json
+    requires_approval: false     # admin pre-approved: scheduled health alerts may post without a human step
+                                 # (the flow must still set dry_run=false)
+
+# -------------------------------------------------------------------------------------------- document_create
+contracts_dir: /data/contracts              # systems learned and approved in Agent Studio: each <id>.yaml's `tools:` part adds connectors
+
+files:
+  root: /data/files                         # each person's files: <root>/<owner id>/ (the Agent Studio app mounts the same folder)
+
+web:                                        # agents' internet access, per deployment; air-gapped installs keep it false
+  enabled: false
+  allow_domains: []                         # empty = any public site
+  deny_domains: []
+  allow_private: false                      # the web tool must never reach internal addresses
+  max_bytes: 10000000
+  timeout_s: 30
+
+documents:
+  output_dir: /app/data/documents          # files are written here (one new file per call, never overwritten)
+  template_dir: /app/config/templates      # *.docx / *.xlsx templates; {{ placeholders }}, [[rows]] marker
+  max_rows: 5000

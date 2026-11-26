@@ -1,0 +1,66 @@
+# Test doubles for the automated tests ONLY (tests/mocks/apps.py serves them on port 9190).
+# tests/conftest.py copies this file into the contracts folder while the tests run and removes it afterwards,
+# so these systems never show up for people using the app. Every result from a `mock: true` app says so.
+# They also show the contract options: one deployment per target (instances), looking an id up by name (resolve),
+# filter defaults (defaults) and best-effort target filtering (target: filter).
+version: 1
+tools:
+  apps:
+    sqlmon:
+      type: generic
+      mock: true
+      instances:                       # one SQL monitor deployment per server: the target picks it
+        INTDB:
+          base_url: http://host.docker.internal:9190/sqlmon/
+        SQLPROD01:
+          base_url: http://host.docker.internal:9190/sqlmon/
+      timeout_s: 20
+      retries: 1
+      allow_write: false
+      operations:
+        health_summary: {path: /api/health-summary}
+        state: {path: /api/state}
+        findings: {path: /api/findings, query: [category, severity, status]}
+        findings_summary: {path: /api/findings/summary}
+        unacknowledged_alerts: {path: /api/findings/unacknowledged-alerts}
+      actions: {}
+    iis:
+      type: generic
+      mock: true
+      base_url: http://host.docker.internal:9190/iis/
+      auth:
+        type: ad_login
+        login_path: /api/v1/auth/login
+        username: svc_studio_ro
+        password_env: STUDIO_TOOL_IIS_PASSWORD
+      resolve:                         # operations name a node; the system wants its id
+        placeholder: node_id
+        list_path: /api/v1/nodes
+        match: [hostname, display_name]
+        id: id
+        label: IIS node
+      allow_write: false
+      operations:
+        overview: {path: /api/v1/overview, query: [cluster]}
+        fleet_health: {path: /api/v1/overview/health, query: [cluster, days, minutes], target: "query:node"}
+        nodes: {path: /api/v1/nodes, query: [cluster]}
+        node_detail: {path: "/api/v1/nodes/{node_id}/detail"}
+        slow_requests: {path: "/api/v1/nodes/{node_id}/slow-requests", query: [hours, limit]}
+        incidents: {path: /api/v1/incidents, query: [status_filter, limit, cluster], defaults: {status_filter: open}, target: filter}
+      actions: {}
+    remediation_mock:
+      type: generic
+      mock: true
+      base_url: http://host.docker.internal:9190/remediation/
+      auth: {type: none}
+      allow_write: true
+      allowed_targets: [WEB01, WEB02]
+      operations:
+        host_status: {path: "/api/v1/fleet/{target}"}
+      actions:
+        restart_service:
+          method: POST
+          path: /api/v1/actions
+          target_field: host
+          fixed: {action: restart}
+          body: [service]

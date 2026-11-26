@@ -1,0 +1,72 @@
+# Agent Studio approved component catalog - the ONE list of what builders may use.
+#
+# - The Agent Studio Builder palette shows exactly these components, grouped and labelled as below.
+# - agent_studio.seed blocks EVERY other engine component and starter template (engine catalog policy is
+#   block-only, so "not listed" = blocked on save, import and run, including through the engine API).
+# - `defaults` replace the engine's default field values (e.g. its agent instructions); `hide` removes
+#   fields from the property panel (they keep their engine default).
+# Keys are engine component keys (GET /api/studio/v1/catalog shows them with their fields).
+
+groups:
+  - id: io
+    label: Input & output
+    components:
+      ChatInput: {label: Chat input}
+      ChatOutput: {label: Chat output}
+      TextInput: {label: Text input}
+      TextOutput: {label: Text output}
+  - id: agents
+    label: Agents & models
+    components:
+      Agent:
+        label: AI agent
+        hide: [base_url_ibm_watsonx, project_id]
+        defaults:
+          system_prompt: "You are a Agent Studio agent for our organization. Use only the tools you are given, explain what you did, and never invent data."
+      LanguageModelComponent: {label: Language model}
+      Prompt Template: {label: Prompt}
+      StructuredOutput: {label: Structured output}
+      Memory: {label: Conversation memory}
+  - id: tools
+    label: Tools
+    components:
+      ext:studio:AppQueryComponent@official: {label: Query an application}
+      ext:studio:SqlReadonlyComponent@official: {label: Read-only SQL}
+      ext:studio:AppActionComponent@official: {label: Application action (approval)}
+      ext:studio:RecordWriteComponent@official: {label: Write a record (approval)}
+      ext:studio:NotifyComponent@official: {label: Notify}
+      ext:studio:DocumentCreateComponent@official: {label: Create document}
+      ext:studio:KnowledgeSearchComponent@official: {label: Knowledge search}
+      ext:studio:SaveDataComponent@official: {label: Save data as a file}
+      ext:studio:CodeToolComponent@official: {label: Tool written by AI (approved)}
+      ext:studio:FilesBundleComponent@official: {label: Bundle files}
+      ext:studio:WebReadComponent@official: {label: Read the web}
+      MCPTools: {label: MCP tools (approved servers)}
+      CurrentDate: {label: Current date}
+      CalculatorComponent: {label: Calculator}
+  - id: logic
+    label: Logic & flow
+    components:
+      ConditionalRouter: {label: If / else}
+      SmartRouter: {label: AI router}
+      LoopComponent: {label: Loop}
+      RunFlow: {label: Run another agent}
+      FlowTool: {label: Agent as a tool}
+      ParserComponent: {label: Format text}
+      CombineText: {label: Combine text}
+  - id: approvals
+    label: Approvals & triggers
+    components:
+      HumanInput: {label: Human approval}
+      ScheduleTrigger: {label: Schedule}
+      InboundWebhookTrigger: {label: Webhook trigger}
+  - id: diagnostics
+    label: Diagnostics
+    components:
+      ext:studio:BundleCheckComponent@official: {label: Agent Studio check}
+
+templates:
+  allow: []            # engine starter templates: none (Agent Studio has its own agent templates)
+
+model_providers:
+  approve: [ollama, vllm]   # local model servers only (config ai:)

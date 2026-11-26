@@ -1,0 +1,33 @@
+[project]
+name = "studio-tools"
+version = "0.3.0"
+description = "Agent Studio approved tools for Langflow (extension bundle)."
+requires-python = ">=3.12"
+dependencies = [
+    "lfx>=1.13,<1.14",
+    "httpx>=0.27",
+    "pyyaml>=6",
+    "sqlalchemy>=2",
+    "psycopg[binary]>=3.1",
+    "clickhouse-connect>=0.7",
+    "pymssql>=2.3",
+    "python-docx>=1.1",
+    "openpyxl>=3.1",
+    "jinja2>=3.1",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
+[project.entry-points."langflow.extensions"]
+studio-tools = "studio_tools"
+
+[tool.setuptools.packages.find]
+include = ["studio_tools*"]
+
+[tool.setuptools.package-data]
+studio_tools = ["extension.json"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"

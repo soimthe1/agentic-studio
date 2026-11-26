@@ -1,0 +1,38 @@
+# Agent Studio tools allowlist (studio-tools) - DEVELOPMENT. Schema: tools/studio_tools/tools.example.yaml.
+# Read by the engine (mounted at /app/config/tools.yaml) and by the smart contract (capability availability).
+#
+# Systems are connected on the Tools page (one contract each in contracts_dir). The automated tests add their
+# test doubles (tests/mocks/test_systems.yaml) only while they run. Production (config.prod.yaml has no tools section; the
+# production tools.yaml is written at deployment, see FIRST_DEPLOYMENT.md) points at the real apps.
+version: 1
+
+apps: {}                         # connected on the Tools page (contracts_dir); test doubles: tests/mocks/test_systems.yaml
+
+knowledge:
+  enabled: false                 # the knowledge platform offers no delegated machine route yet
+
+notify:
+  ops_chat:
+    type: webhook
+    url: http://host.docker.internal:9190/chat/hook
+    format: text
+    requires_approval: false     # pre-approved channel: scheduled health alerts may post without a human step
+    timeout_s: 10
+
+contracts_dir: /data/contracts   # systems learned and approved in Agent Studio (one <id>.yaml each, `tools:` part)
+
+files:
+  root: /data/files              # each person's files: <root>/<owner id>/ - the Agent Studio app reads the same folder
+
+web:                             # agents' internet access, per deployment. Air-gapped: keep false.
+  enabled: false
+  allow_domains: []              # empty = any public site; otherwise only these (and their subdomains)
+  deny_domains: []
+  allow_private: false           # never let the web tool reach internal addresses
+  max_bytes: 10000000
+  timeout_s: 30
+
+documents:
+  output_dir: /data/files        # documents go to the owner's files (per-owner folder added by the tool)
+  template_dir: /app/config/templates
+  max_rows: 5000

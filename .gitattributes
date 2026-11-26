@@ -1,0 +1,8 @@
+# Same line endings on every OS (scripts in containers need LF); binaries untouched.
+* text=auto eol=lf
+*.ps1 text eol=crlf
+*.pdf binary
+*.png binary
+*.jpg binary
+*.woff2 binary
+*.ico binary

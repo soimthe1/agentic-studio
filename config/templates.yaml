@@ -1,0 +1,29 @@
+# Agent Studio templates: ready-made descriptions a person picks on the Create page, changes in their own words, and sends.
+# Plain sentences only (no settings): Agent Studio works out the rest. Keep each one to abilities this deployment really
+# has (systems on the Systems page, files, approvals). English and Arabic side by side.
+teams:
+  - id: dba
+    name: {en: Database team, ar: فريق قواعد البيانات}
+    templates:
+      - en: Answer questions about the health of our SQL Servers using the SQL Server Monitor.
+        ar: أجب عن الأسئلة حول صحة خوادم SQL لدينا باستخدام مراقب SQL Server.
+      - en: Every weekday at 7am check the SQL Server Monitor and tell me only if there are critical findings.
+        ar: كل يوم عمل في السابعة صباحاً افحص مراقب SQL Server وأبلغني فقط إذا وُجدت نتائج حرجة.
+      - en: Every Monday at 8am save the SQL Server findings of the week to an Excel file for me.
+        ar: كل يوم اثنين في الثامنة صباحاً احفظ نتائج SQL Server للأسبوع في ملف Excel.
+  - id: ops
+    name: {en: IT operations, ar: عمليات تقنية المعلومات}
+    templates:
+      - en: Answer questions about the health of our IIS web servers.
+        ar: أجب عن الأسئلة حول صحة خوادم الويب IIS لدينا.
+      - en: When an IIS incident alert arrives, look at the server's health and propose a fix; change nothing until I approve.
+        ar: عند وصول تنبيه حادث IIS، افحص صحة الخادم واقترح إصلاحاً؛ لا تغيّر شيئاً حتى أوافق.
+      - en: Every morning at 7am check the SQL Servers and the IIS servers and tell the ops chat only if something is wrong.
+        ar: كل صباح في السابعة افحص خوادم SQL وخوادم IIS وأبلغ محادثة العمليات فقط إذا كان هناك خلل.
+  - id: reports
+    name: {en: Reports, ar: التقارير}
+    templates:
+      - en: Every Sunday at 8am write a Word report of the SQL Server findings and the IIS incidents of the week.
+        ar: كل يوم أحد في الثامنة صباحاً اكتب تقرير Word بنتائج SQL Server وحوادث IIS للأسبوع.
+      - en: On the first day of every month collect the SQL Server findings and IIS incidents into a zip file for me.
+        ar: في اليوم الأول من كل شهر اجمع نتائج SQL Server وحوادث IIS في ملف مضغوط.

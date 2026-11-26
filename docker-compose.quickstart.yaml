@@ -1,0 +1,101 @@
+# Quick start: the whole studio on one computer (Windows, macOS or Linux) with Docker. Nothing to edit.
+#
+#   docker compose -f docker-compose.quickstart.yaml up -d --build      first build: 15-30 minutes (needs internet)
+#   open http://localhost:8095                                           first visit: create the administrator
+#   Settings -> AI models                                                point it at your model server, Test, Save
+#
+# What runs: PostgreSQL (its own, in a volume), the agent engine and the studio app, built from this folder.
+# Secrets: generated once on first start into the "secrets" volume (never the same on two installs). To read them
+# (e.g. the engine console's break-glass login):
+#   docker compose -f docker-compose.quickstart.yaml exec agent-studio cat /run/studio/secrets.env
+# Settings: config/config.yaml with config/config.quickstart.yaml on top (STUDIO_CONFIG_OVERLAY).
+# Model on this computer (Ollama): the studio reaches it as http://host.docker.internal:11434. On Linux, start
+# Ollama with OLLAMA_HOST=0.0.0.0 so containers can reach it.
+# Stop: docker compose -f docker-compose.quickstart.yaml down       (add -v to delete all data as well)
+# For a real server (existing PostgreSQL, directory sign-in, offline bundle) see FIRST_DEPLOYMENT.md.
+
+name: agent-studio-quickstart
+
+x-secrets: &secrets
+  # Runs the real command with the generated secrets in its environment.
+  - sh
+  - -c
+  - set -a && . /run/studio/secrets.env && set +a && exec "$$@"
+  - sh
+
+services:
+  secrets:
+    image: postgres:16-alpine
+    user: root
+    volumes: [secrets:/run/studio]
+    entrypoint:
+      - sh
+      - -c
+      - |
+        f=/run/studio/secrets.env
+        [ -s "$$f" ] && exit 0
+        r() { tr -dc A-Za-z0-9 </dev/urandom | head -c 48; }
+        printf 'STUDIO_DB_PASSWORD=%s\nSTUDIO_ENGINE_SECRET=%s\nLANGFLOW_SECRET_KEY=%s\nLANGFLOW_SUPERUSER=studio-admin\nLANGFLOW_SUPERUSER_PASSWORD=%s\n' "$$(r)" "$$(r)" "$$(r)" "$$(r)" > "$$f"
+        chown 1000:1000 "$$f" && chmod 600 "$$f"
+    restart: "no"
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment: {POSTGRES_USER: agent_studio, POSTGRES_DB: agent_studio}
+    entrypoint: *secrets
+    command: [sh, -c, 'POSTGRES_PASSWORD="$$STUDIO_DB_PASSWORD" exec docker-entrypoint.sh postgres']
+    volumes: [secrets:/run/studio:ro, db:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD, pg_isready, -U, agent_studio, -d, agent_studio]
+      interval: 5s
+      retries: 20
+    depends_on:
+      secrets: {condition: service_completed_successfully}
+
+  engine:
+    build: {context: ., dockerfile: docker/langflow/Dockerfile}
+    image: agent-studio-engine:quickstart
+    restart: unless-stopped
+    extra_hosts: ["host.docker.internal:host-gateway"]   # model servers on this computer
+    environment: {STUDIO_CONFIG_OVERLAY: /app/config/config.quickstart.yaml}
+    entrypoint: *secrets
+    command: [python, -m, studio_engine.entrypoint]
+    volumes:
+      - secrets:/run/studio:ro
+      - ./config:/app/config:ro
+      - ./branding:/app/branding:ro
+      - engine:/home/langflow/.cache/langflow
+      - files:/data/files
+      - contracts:/data/contracts
+      - toolkit:/data/toolkit
+    ports: ["127.0.0.1:${STUDIO_ENGINE_PORT:-7860}:7860"]   # engine console: this computer only
+    depends_on:
+      postgres: {condition: service_healthy}
+
+  agent-studio:
+    build: {context: ., dockerfile: docker/app/Dockerfile}
+    image: agent-studio-app:quickstart
+    restart: unless-stopped
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    environment: {STUDIO_CONFIG_OVERLAY: /app/config/config.quickstart.yaml}
+    entrypoint: *secrets
+    # Apply the approved component catalog to the engine (safe to repeat), then start the app.
+    command: [sh, -c, "python -m agent_studio.seed --policy /app/config/policy/catalog.yaml && exec uvicorn agent_studio.app:app --host 0.0.0.0 --port 8095 --proxy-headers --no-server-header"]
+    volumes:
+      - secrets:/run/studio:ro
+      - ./config:/app/config:ro
+      - ./branding:/app/branding:ro
+      - files:/data/files
+      - contracts:/data/contracts
+    ports: ["${STUDIO_PORT:-8095}:8095"]   # another port: STUDIO_PORT=9000 docker compose ... up
+    depends_on:
+      engine: {condition: service_healthy}
+
+volumes:
+  secrets:
+  db:
+  engine:
+  files:
+  contracts:
+  toolkit:
